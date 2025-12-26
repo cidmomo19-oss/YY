@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Videy Premium</title>
+    
+    <!-- === FAVICON === -->
+    <link rel="icon" href="https://i.ibb.co.com/SpVMhDf/Picsart-25-12-18-16-27-03-730-2.jpg" sizes="32x32" type="image/jpeg">
+    <link rel="icon" href="https://i.ibb.co.com/SpVMhDf/Picsart-25-12-18-16-27-03-730-2.jpg" sizes="192x192" type="image/jpeg">
+    
+    <!-- === LIBRARY FLUID PLAYER === -->
+    <script src="https://cdn.fluidplayer.com/v3/current/fluidplayer.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.fluidplayer.com/v3/current/fluidplayer.min.css" type="text/css"/>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 40px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #content-wrapper {
+            width: 95%; max-width: 854px;
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+            padding-bottom: 50px;
+        }
+
+        .player-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000; 
+            border-radius: 12px; 
+            overflow: hidden;
+            position: relative; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            z-index: 20;
+        }
+        
+        iframe { 
+            width: 100% !important; height: 100% !important; 
+            border: none !important; display: block !important; 
+        }
+
+        /* Container Native Player (Hidden by default) */
+        #native-player-wrapper {
+            width: 100%; height: 100%; display: none;
+        }
+        video { width: 100%; height: 100%; }
+
+        #ad-overlay-locker {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+            padding: 20px;
+            transition: opacity 0.5s ease;
+        }
+
+        .locker-content {
+            width: 100%; max-width: 420px;
+            text-align: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        .icon-circle {
+            width: 64px; height: 64px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 16px;
+        }
+        .icon-circle svg { width: 32px; height: 32px; color: #fff; }
+
+        .locker-title { font-size: 18px; font-weight: 700; color: white; margin-bottom: 6px; letter-spacing: 0.5px; }
+        .locker-desc { font-size: 14px; color: #94a3b8; line-height: 1.5; margin-bottom: 24px; max-width: 90%; }
+        
+        .btn-unlock {
+            background: #fff; color: #0f172a; border: none;
+            padding: 12px 28px; border-radius: 8px;
+            font-weight: 700; font-size: 14px;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            min-width: 220px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .btn-unlock:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .btn-unlock:active { transform: scale(0.98); }
+        .btn-unlock:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .status-box {
+            margin-top: 16px; padding: 8px 16px; border-radius: 6px;
+            font-size: 13px; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 8px;
+            opacity: 0; transition: all 0.3s;
+        }
+        .status-box svg { width: 16px; height: 16px; }
+        .status-waiting { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
+        .status-fail { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .status-success { background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); }
+
+        /* TOMBOL DOWNLOAD (OPSIONAL) */
+        #dl-container { width: 100%; margin-top: 15px; display: none; }
+        .btn-download-primary {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; background: #2563eb; color: white;
+            padding: 14px; border-radius: 12px; font-weight: 600;
+            text-decoration: none; transition: transform 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        }
+        .btn-download-primary:hover { background: #1d4ed8; transform: translateY(-2px); }
+
+        .contact-link {
+            margin-top: 12px; width: 100%; text-align: center; font-size: 13px; color: #0f172a;
+            background: #f1f5f9; padding: 10px; border-radius: 12px; border: 1px solid #cbd5e1;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            text-decoration: none; transition: all 0.5s ease; font-weight: 500;
+        }
+        .contact-link svg { width: 18px; height: 18px; color: #25D366; }
+
+        #native-ad-wrapper {
+            margin-top: 20px; width: 100%; background: #fff; border-radius: 12px;
+            border: 1px solid #e2e8f0; padding: 12px; display: flex; justify-content: center;
+            align-items: center; min-height: 120px; transition: all 0.5s ease;
+        }
+
+        #device-msg { transition: all 0.5s ease; }
+
+        @media (max-width: 640px) {
+            .player-container { width: 100%; box-shadow: none; }
+            .icon-circle { width: 48px; height: 48px; margin-bottom: 12px; }
+            .icon-circle svg { width: 24px; height: 24px; }
+            .locker-title { font-size: 16px; }
+            .locker-desc { font-size: 12px; margin-bottom: 16px; }
+            .btn-unlock { padding: 10px 20px; font-size: 12px; min-width: 180px; }
+            .status-box { font-size: 11px; padding: 6px 12px; }
+        }
+
+        .verify-card { background: #ffffff; padding: 32px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0; width: 90%; max-width: 400px; text-align: center; z-index: 100; margin-bottom: 30px; }
+        .code-display { font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #0f172a; margin: 20px 0; padding: 12px; background: #f1f5f9; border-radius: 12px; }
+        input[type="tel"] { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #cbd5e1; text-align: center; font-size: 18px; margin-bottom: 16px; outline: none; transition: border 0.2s; }
+        input[type="tel"]:focus { border-color: #0f172a; }
+        .btn-verify { width: 100%; background: #0f172a; color: #fff; padding: 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s; }
+        .btn-verify:hover { opacity: 0.9; }
+        #error-msg { color: #dc2626; font-size: 14px; margin-top: -10px; margin-bottom: 10px; font-weight: 600; display: none; }
+        
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
+        .shake-anim { animation: shake 0.4s ease-in-out; }
+    </style>
+</head>
+<body data-version="v52.0-VIA-BROWSER-FIX">
+
+    <div id="social-bar-wrapper">
+        <script type='text/javascript' src='//commonwealthgroovemadam.com/d8/73/50/d87350f60caa61205cfd0d5c55df9e33.js'></script>
+    </div>
+
+    <div id="verify-screen" class="verify-card">
+        <h2 class="text-xl font-bold text-gray-900 mb-1">Verifikasi</h2>
+        <p class="text-gray-500 text-xs mb-4">Masukkan kode akses video.</p>
+        <p id="error-msg">Kode salah!</p>
+        <div class="code-display" id="display-code">----</div>
+        <input type="tel" id="user-input" placeholder="____" maxlength="4">
+        <button onclick="checkCode()" class="btn-verify">Konfirmasi</button>
+    </div>
+
+    <div id="content-wrapper">
+        
+        <div id="device-msg" class="w-full text-center mb-3 hidden">
+            <div class="inline-block bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2 shadow-sm">
+                <div class="flex flex-col items-center">
+                    <p class="text-[10px] text-emerald-600 uppercase tracking-wider font-bold mb-0.5 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                        STREAMING READY
+                    </p>
+                    <p class="text-sm text-gray-600 flex items-center gap-1.5">
+                        <span>Dioptimalkan untuk</span>
+                        <b id="model-hp" class="text-emerald-700">Perangkat Anda</b>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PLAYER -->
+        <div class="player-container">
+            <!-- OVERLAY LOCKER (ORIGINAL - HITAM) -->
+            <div id="ad-overlay-locker">
+                <div class="locker-content">
+                    <div class="icon-circle">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    </div>
+
+                    <div class="locker-title">Konten Terkunci</div>
+                    <div class="locker-desc">
+                        Klik tombol di bawah dan tetap berada di halaman sponsor selama <b>8 detik</b> untuk membuka akses.
+                    </div>
+
+                    <button class="btn-unlock" onclick="startSmartUnlock()">
+                        <span>BUKA AKSES (8s)</span>
+                        <svg style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    </button>
+
+                    <div id="status-box" class="status-box"></div>
+                </div>
+            </div>
+            
+            <!-- EMBED MOUNT -->
+            <div id="embed-mount" style="width:100%; height:100%;"></div>
+
+            <!-- NATIVE PLAYER MOUNT (MP4/HLS) -->
+            <div id="native-player-wrapper">
+                <video id="native-video">
+                    <source src="" type="video/mp4" />
+                </video>
+            </div>
+        </div>
+
+        <!-- TOMBOL DOWNLOAD (Hanya Muncul Jika ?dl=) -->
+        <div id="dl-container">
+            <a href="#" id="dl-link" target="_blank" class="btn-download-primary">
+                <svg style="width:20px;height:20px" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>Download Video Ini</span>
+            </a>
+        </div>
+
+        <a href="https://wa.me/6285126450524" target="_blank" class="contact-link">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2zM12.05 20.21c-1.5 0-2.97-.39-4.27-1.14l-.3-.18-3.14.83.84-3.07-.19-.31a8.12 8.12 0 01-1.25-4.42c0-4.48 3.64-8.13 8.12-8.13 2.17 0 4.21.85 5.75 2.38 1.53 1.54 2.38 3.58 2.38 5.75 0 4.48-3.64 8.13-8.12 8.13zm4.44-6.08c-.24-.12-1.44-.71-1.66-.79-.22-.08-.39-.12-.54.12-.16.24-.61.77-.75.93-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.95-1.21-.72-.65-1.21-1.45-1.35-1.69-.14-.24-.02-.37.1-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.46-.4-.4-.54-.4h-.46c-.16 0-.42.06-.64.3-.22.24-.85.83-.85 2.02s.87 2.34.99 2.5c.12.16 1.71 2.61 4.15 3.66 1.62.7 2.24.75 3.04.63.89-.13 2.11-.86 2.41-1.69.29-.83.29-1.54.2-1.69-.08-.15-.29-.24-.53-.36z"/></svg>
+            <span>Lapor Masalah / Request Video</span>
+        </a>
+
+        <div id="native-ad-wrapper">
+            <script async="async" data-cfasync="false" src="https://commonwealthgroovemadam.com/2259c8961aeea898328fa2ef52a93ed9/invoke.js"></script>
+            <div id="container-2259c8961aeea898328fa2ef52a93ed9"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // === CONFIG ===
+        const DIRECT_LINK = "https://commonwealthgroovemadam.com/gswk7qfn?key=e9ea457a62ae2243b08195c6772247a3";
+        const REQUIRED_DURATION = 8; 
+
+        // URL Base Player
+        const playerBases = {
+            h: 'https://short.icu/', s: 'https://gradehgplus.com/e/', v: 'https://vidhidepre.com/v/',
+            t: 'https://emturbovid.com/t/', d: 'https://dood.li/e/', o: 'https://voe.sx/e/',
+            f: 'https://filemoon.sx/e/', st: 'https://streamtape.com/e/', md: 'https://mixdrop.co/e/',
+            hls: 'https://bytt.jb-aiwei.cc/contents/videos/'
+        };
+
+        let correctCode = Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('display-code').innerText = correctCode;
+
+        let targetVideoUrl = "";
+        let isNativeMode = false;
+        let mimeType = "";
+
+        // INIT URL PARSER
+        (function initVideoLogic() {
+            const params = new URLSearchParams(window.location.search);
+            const dlContainer = document.getElementById('dl-container');
+            const dlLink = document.getElementById('dl-link');
+
+            // 1. CEK DOWNLOAD BUTTON (Semua Mode)
+            if (params.has('dl')) {
+                const dlUrl = params.get('dl');
+                dlLink.href = dlUrl;
+                dlContainer.style.display = 'block';
+            }
+
+            // 2. CEK MODE MP4 (?mp4=)
+            if (params.has('mp4')) {
+                isNativeMode = true;
+                targetVideoUrl = params.get('mp4');
+                mimeType = 'video/mp4';
+                return;
+            }
+
+            // 3. CEK MODE LAIN (HLS / EMBED)
+            for (let key in playerBases) {
+                if (params.has(key)) {
+                    if (key === 'hls') {
+                        isNativeMode = true;
+                        targetVideoUrl = playerBases[key] + params.get(key) + '/index.m3u8';
+                        mimeType = 'application/x-mpegURL';
+                    } else {
+                        // EMBED
+                        isNativeMode = false;
+                        targetVideoUrl = playerBases[key] + params.get(key);
+                        if (key === 'g') targetVideoUrl += '/preview';
+                        if (key === 'vz' || key === 'up') targetVideoUrl += '.html';
+                        if (key === 'db') targetVideoUrl += '?raw=1';
+                    }
+                    break;
+                }
+            }
+        })();
+
+        // FUNGSI LOAD PLAYER (Dijalankan Setelah Unlock)
+        function loadFinalPlayer() {
+            if (isNativeMode) {
+                document.getElementById('embed-mount').style.display = 'none';
+                document.getElementById('native-player-wrapper').style.display = 'block';
+                
+                const vidObj = document.getElementById('native-video');
+                vidObj.querySelector('source').src = targetVideoUrl;
+                vidObj.querySelector('source').type = mimeType;
+
+                fluidPlayer('native-video', {
+                    layoutControls: {
+                        fillToContainer: true,
+                        primaryColor: "#2563eb",
+                        autoPlay: false, // Auto play setelah unlock
+                    }
+                });
+            } else {
+                // Load Iframe
+                const mount = document.getElementById('embed-mount');
+                if (targetVideoUrl) {
+                    mount.innerHTML = `<iframe src="${targetVideoUrl}" allowfullscreen allow="autoplay" scrolling="no"></iframe>`;
+                } else {
+                    mount.innerHTML = `<div style="color:white; text-align:center; padding-top:20%;">Video tidak ditemukan.</div>`;
+                }
+            }
+        }
+
+        // --- DETEKSI DEVICE ---
+        (async function detectDevice() {
+            const display = document.getElementById('model-hp');
+            const container = document.getElementById('device-msg');
+            let finalName = "";
+            if (/iPhone/i.test(navigator.userAgent)) finalName = "iPhone";
+            else if (/iPad/i.test(navigator.userAgent)) finalName = "iPad";
+            if (!finalName && navigator.userAgentData) { try { const uaData = await navigator.userAgentData.getHighEntropyValues(["model"]); if (uaData.model) finalName = uaData.model; } catch (e) {} }
+            if (!finalName) { const ua = navigator.userAgent; const match = ua.match(/;\s?([A-Za-z0-9\s\-]+)\sBuild\//); if (match && match[1]) finalName = match[1].trim().replace('wv', ''); }
+            if (!finalName || finalName.length < 3 || finalName.includes("Android")) { const ua = navigator.userAgent; if (ua.includes("Samsung")) finalName = "Samsung Galaxy"; else if (ua.includes("Redmi")) finalName = "Xiaomi Redmi"; else if (ua.includes("OPPO")) finalName = "OPPO Series"; else if (ua.includes("Vivo")) finalName = "Vivo Series"; else if (ua.includes("Infinix")) finalName = "Infinix"; else if (ua.includes("Realme")) finalName = "Realme"; else finalName = "Smartphone Kamu"; }
+            if (finalName) { if (finalName.startsWith("SM-")) finalName = "Samsung " + finalName; if (finalName.startsWith("CPH") || finalName.startsWith("RMX")) finalName = "OPPO/Realme " + finalName; display.innerText = finalName; container.classList.remove('hidden'); }
+        })();
+
+        function killSocialBar() {
+            const socialAd = document.getElementById('social-bar-wrapper');
+            if(socialAd) socialAd.remove();
+        }
+
+        // --- LOGIKA UNLOCK (SAMA UNTUK SEMUA) ---
+        let adClickTime = 0;
+        let isProcessRunning = false;
+        let isUnlocked = false;
+        let visualInterval = null;
+
+        function startSmartUnlock() {
+            if(isUnlocked) return;
+            window.open(DIRECT_LINK, '_blank');
+            adClickTime = Date.now();
+            isProcessRunning = true;
+            
+            const btn = document.querySelector('.btn-unlock');
+            const statusBox = document.getElementById('status-box');
+            
+            statusBox.style.opacity = '1';
+            statusBox.className = "status-box status-waiting";
+            statusBox.innerHTML = `<svg class="animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>JANGAN TUTUP IKLAN...</span>`;
+
+            let timeLeft = REQUIRED_DURATION;
+            btn.disabled = true; 
+            
+            if(visualInterval) clearInterval(visualInterval);
+
+            visualInterval = setInterval(() => {
+                if(!isProcessRunning) { clearInterval(visualInterval); return; }
+
+                const isSplitScreen = (window.innerHeight < (window.screen.height * 0.65));
+
+                if (!document.hidden || isSplitScreen) {
+                    adClickTime = Date.now(); 
+                    timeLeft = REQUIRED_DURATION; 
+                    
+                    if(isSplitScreen) {
+                        btn.innerHTML = `<span>GUNAKAN CHROME!</span>`;
+                        btn.style.color = "#ef4444";
+                    } else {
+                        btn.innerHTML = `<span>TUNGGU DI TAB IKLAN...</span>`;
+                        btn.style.color = "#0f172a";
+                    }
+                } else {
+                    timeLeft--;
+                    btn.style.color = "#0f172a";
+                    if(timeLeft > 0) {
+                        btn.innerHTML = `<span>MEMERIKSA... (${timeLeft})</span>`;
+                    } else {
+                        btn.innerHTML = `<span>SILAKAN KEMBALI</span>`;
+                    }
+                }
+            }, 1000);
+        }
+
+        window.onpageshow = function(event) {
+            if (isProcessRunning && !isUnlocked) {
+                const returnTime = Date.now();
+                const diffSeconds = Math.floor((returnTime - adClickTime) / 1000);
+                if (diffSeconds >= (REQUIRED_DURATION - 1)) {
+                    handleUserReturn();
+                    return; 
+                }
+            }
+            if (event.persisted && isProcessRunning && !isUnlocked) {
+                isProcessRunning = false;
+                adClickTime = 0;
+                if(visualInterval) clearInterval(visualInterval);
+                const btn = document.querySelector('.btn-unlock');
+                const statusBox = document.getElementById('status-box');
+                statusBox.className = "status-box status-fail";
+                statusBox.innerHTML = `<span>Terdeteksi tombol Kembali!</span>`;
+                btn.disabled = false;
+                btn.innerHTML = `<span>ULANGI (8s)</span>`;
+            }
+        };
+
+        function handleUserReturn() {
+            if (document.hidden && !isUnlocked) return;
+
+            const isSplitScreen = (window.innerHeight < (window.screen.height * 0.65));
+            if (isSplitScreen && isProcessRunning) {
+                 const btn = document.querySelector('.btn-unlock');
+                 btn.innerHTML = `<span>GANTI KE CHROME!</span>`;
+                 return;
+            }
+
+            if (isProcessRunning && !isUnlocked) {
+                const returnTime = Date.now();
+                const diffSeconds = Math.floor((returnTime - adClickTime) / 1000);
+                
+                const btn = document.querySelector('.btn-unlock');
+                const statusBox = document.getElementById('status-box');
+
+                if (diffSeconds >= (REQUIRED_DURATION - 1)) {
+                    // === SUKSES ===
+                    isUnlocked = true;
+                    isProcessRunning = false;
+                    clearInterval(visualInterval);
+                    
+                    statusBox.className = "status-box status-success";
+                    statusBox.innerHTML = `<span>Terbuka!</span>`;
+                    btn.innerHTML = `<span>MEMUAT...</span>`;
+                    
+                    // Hilangkan Overlay
+                    const overlay = document.getElementById('ad-overlay-locker');
+                    overlay.style.opacity = '0';
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        // LOAD PLAYER SEKARANG (Setelah Unlock)
+                        loadFinalPlayer();
+                    }, 500);
+
+                    // Bersih-bersih
+                    const nativeAd = document.getElementById('native-ad-wrapper');
+                    const deviceMsg = document.getElementById('device-msg');
+                    const contactLink = document.querySelector('.contact-link');
+
+                    if(nativeAd) nativeAd.style.display = 'none';
+                    if(deviceMsg) deviceMsg.style.display = 'none';
+                    if(contactLink) contactLink.style.display = 'none';
+                    
+                    killSocialBar();
+                    setTimeout(killSocialBar, 1000); 
+
+                } else {
+                    isProcessRunning = false;
+                    clearInterval(visualInterval);
+                    adClickTime = 0;
+                    statusBox.className = "status-box status-fail";
+                    statusBox.innerHTML = `<span>Gagal! Kamu kembali terlalu cepat.</span>`;
+                    btn.disabled = false;
+                    btn.style.background = "#ef4444"; 
+                    btn.style.color = "white";
+                    btn.innerHTML = `<span>ULANGI (8s)</span>`;
+                    document.querySelector('.locker-content').classList.add('shake-anim');
+                    setTimeout(() => document.querySelector('.locker-content').classList.remove('shake-anim'), 500);
+                }
+            }
+        }
+
+        document.addEventListener("visibilitychange", handleUserReturn);
+        window.addEventListener("focus", handleUserReturn);
+
+        function checkCode() {
+            const val = document.getElementById('user-input').value;
+            if (val == correctCode) {
+                killSocialBar();
+                document.getElementById('verify-screen').style.display = 'none';
+                document.getElementById('content-wrapper').style.display = 'flex';
+            } else {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
